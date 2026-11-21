@@ -1,0 +1,96 @@
+
+services:
+
+  controller:
+    build:
+      context: .
+      dockerfile: controller/Dockerfile
+    container_name: object-store-controller
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./database:/app/database
+    networks:
+      - storage-network
+    restart: unless-stopped
+
+  worker1:
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+    container_name: storage-worker-1
+    environment:
+      WORKER_ID: worker1
+      WORKER_URL: http://worker1:8001
+      CONTROLLER_URL: http://controller:8000
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./data/worker1:/data
+    depends_on:
+      - controller
+    networks:
+      - storage-network
+    restart: unless-stopped
+
+  worker2:
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+    container_name: storage-worker-2
+    environment:
+      WORKER_ID: worker2
+      WORKER_URL: http://worker2:8001
+      CONTROLLER_URL: http://controller:8000
+    ports:
+      - "8002:8001"
+    volumes:
+      - ./data/worker2:/data
+    depends_on:
+      - controller
+    networks:
+      - storage-network
+    restart: unless-stopped
+
+  worker3:
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+    container_name: storage-worker-3
+    environment:
+      WORKER_ID: worker3
+      WORKER_URL: http://worker3:8001
+      CONTROLLER_URL: http://controller:8000
+    ports:
+      - "8003:8001"
+    volumes:
+      - ./data/worker3:/data
+    depends_on:
+      - controller
+    networks:
+      - storage-network
+    restart: unless-stopped
+
+  worker4:
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+    container_name: storage-worker-4
+    environment:
+      WORKER_ID: worker4
+      WORKER_URL: http://worker4:8001
+      CONTROLLER_URL: http://controller:8000
+    ports:
+      - "8004:8001"
+    volumes:
+      - ./data/worker4:/data
+    depends_on:
+      - controller
+    networks:
+      - storage-network
+    restart: unless-stopped
+
+
+networks:
+  storage-network:
+    driver: bridge

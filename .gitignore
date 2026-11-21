@@ -1,0 +1,31 @@
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Environment files
+.env
+
+# Database
+database/
+*.db
+*.sqlite
+*.sqlite3
+
+# Worker storage
+data/
+
+# Generated test files
+*.bin
+*_downloaded.*
+repaired_test.bin
+final_test.bin
+final_validation_download.bin
+
+# IDE
+.vscode/
+.DS_Store
+# Local backup versions
+controller/*_backup.py
