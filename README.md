@@ -326,6 +326,7 @@ This project demonstrates practical implementation of important distributed syst
 ## Author
 
 **Haneesh Reddy**
+**Vivek**
 
 GitHub: [@haneeshreddy9](https://github.com/haneeshreddy9)
 
