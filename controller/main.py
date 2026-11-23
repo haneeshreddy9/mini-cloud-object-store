@@ -5,6 +5,8 @@ import json
 import sqlite3
 import uuid
 
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from contextlib import contextmanager
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -1101,3 +1103,187 @@ def update_object_metadata(
         "custom_metadata": updated_metadata,
         "last_modified": last_modified
     }
+
+
+# ============================================================
+# DASHBOARD AND FRONTEND SUPPORT APIs
+# ============================================================
+
+@app.get("/api/v1/dashboard")
+async def dashboard_summary():
+    """
+    Return live storage statistics, worker health,
+    object counts and chunk placement information.
+    """
+
+    objects_response = list_objects(limit=500, offset=0)
+    worker_response = list_workers()
+
+    objects = objects_response["objects"]
+    worker_records = worker_response["workers"]
+
+    with database_connection() as conn:
+        chunk_rows = conn.execute("""
+            SELECT
+                chunk_id,
+                object_id,
+                size,
+                checksum,
+                worker_id,
+                replica_worker_id
+            FROM chunks
+        """).fetchall()
+
+    chunks = [dict(row) for row in chunk_rows]
+
+    primary_bytes = sum(chunk["size"] for chunk in chunks)
+    physical_bytes = primary_bytes * 2
+
+    healthy_workers = sum(
+        1 for worker in worker_records
+        if worker["status"] == "healthy"
+    )
+
+    worker_stats = {}
+
+    for worker in worker_records:
+        worker_id = worker["worker_id"]
+
+        worker_stats[worker_id] = {
+            "worker_id": worker_id,
+            "status": worker["status"],
+            "base_url": worker["base_url"],
+            "registered_at": worker["registered_at"].isoformat(),
+            "last_heartbeat": worker["last_heartbeat"].isoformat(),
+            "primary_chunks": 0,
+            "replica_chunks": 0,
+            "primary_bytes": 0,
+            "replica_bytes": 0,
+            "actual_chunks": None,
+            "actual_bytes": None
+        }
+
+    for chunk in chunks:
+        primary_id = chunk["worker_id"]
+        replica_id = chunk["replica_worker_id"]
+
+        if primary_id in worker_stats:
+            worker_stats[primary_id]["primary_chunks"] += 1
+            worker_stats[primary_id]["primary_bytes"] += chunk["size"]
+
+        if replica_id in worker_stats:
+            worker_stats[replica_id]["replica_chunks"] += 1
+            worker_stats[replica_id]["replica_bytes"] += chunk["size"]
+
+    # Ask each registered Worker for its actual inventory.
+    async with httpx.AsyncClient(timeout=3.0) as client:
+        for worker in worker_records:
+            worker_id = worker["worker_id"]
+
+            if worker["status"] != "healthy":
+                continue
+
+            try:
+                response = await client.get(
+                    f"{worker['base_url']}/internal/workers/"
+                    f"{worker_id}/chunks"
+                )
+                response.raise_for_status()
+
+                inventory = response.json()
+
+                worker_stats[worker_id]["actual_chunks"] = (
+                    inventory["total_chunks"]
+                )
+
+                worker_stats[worker_id]["actual_bytes"] = sum(
+                    item["size"] for item in inventory["chunks"]
+                )
+
+            except httpx.HTTPError:
+                worker_stats[worker_id]["inventory_error"] = True
+
+        complete_chunks = sum(
+        1 for chunk in chunks
+        if chunk["worker_id"] and chunk["replica_worker_id"]
+    )
+
+    missing_replica_chunks = len(chunks) - complete_chunks
+    return {
+        "service": "Mini Cloud Object Store",
+        "status": "healthy" if healthy_workers >= 2 else "degraded",
+        "total_objects": objects_response["total_objects"],
+        "logical_bytes": primary_bytes,
+        "estimated_physical_bytes": physical_bytes,
+        "total_chunks": len(chunks),
+        "replication_factor": 2,
+        "replica_complete_chunks": complete_chunks,
+        "missing_replica_chunks": missing_replica_chunks,   
+        "healthy_workers": healthy_workers,
+        "total_workers": len(worker_records),
+        "workers": list(worker_stats.values()),
+        "objects": objects
+       
+    }
+
+
+@app.get("/api/v1/objects/{object_id}/placement")
+def object_placement(object_id: str):
+    """
+    Return the actual primary and replica locations
+    for every chunk belonging to an object.
+    """
+
+    obj = get_object(object_id)
+
+    if obj is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Object not found"
+        )
+
+    placements = []
+
+    for chunk in obj["chunks"]:
+        placements.append({
+            "chunk_id": chunk["chunk_id"],
+            "chunk_index": chunk["chunk_index"],
+            "size": chunk["size"],
+            "checksum": chunk["checksum"],
+            "primary": {
+                "worker_id": chunk["worker_id"],
+                "worker_url": chunk["worker_url"]
+            },
+            "replica": {
+                "worker_id": chunk["replica_worker_id"],
+                "worker_url": chunk["replica_worker_url"]
+            }
+        })
+
+    return {
+        "object_id": object_id,
+        "object_name": obj["object_name"],
+        "object_checksum": obj["checksum"],
+        "chunk_count": len(placements),
+        "replication_factor": 2,
+        "placements": placements
+    }
+
+
+# ============================================================
+# FRONTEND STATIC FILES
+# ============================================================
+
+FRONTEND_DIR = Path("/app/frontend")
+
+app.mount(
+    "/console/assets",
+    StaticFiles(directory=FRONTEND_DIR),
+    name="console-assets"
+)
+
+
+@app.get("/console", include_in_schema=False)
+@app.get("/console/", include_in_schema=False)
+def serve_console():
+    return FileResponse(FRONTEND_DIR / "index.html")

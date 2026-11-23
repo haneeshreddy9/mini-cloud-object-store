@@ -1,0 +1,381 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b1020">
+    <title>Object Store | Infrastructure Console</title>
+    <link rel="stylesheet" href="/console/assets/styles.css">
+    <script src="/console/assets/app.js" defer></script>
+</head>
+<body>
+<div class="app-shell">
+
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="brand-mark">N</div>
+            <div>
+                <div class="brand-name">NIMBUS</div>
+                <div class="brand-caption">OBJECT STORAGE</div>
+            </div>
+        </div>
+
+        <div class="workspace-label">WORKSPACE</div>
+        <div class="workspace">
+            <div class="workspace-icon">◈</div>
+            <div>
+                <strong>Primary Cluster</strong>
+                <small>Local deployment</small>
+            </div>
+            <span class="workspace-dot"></span>
+        </div>
+
+        <div class="nav-label">PLATFORM</div>
+        <nav class="navigation">
+            <button class="nav-link active" data-page="overview">
+                <span>◫</span> Overview
+            </button>
+            <button class="nav-link" data-page="objects">
+                <span>▤</span> Object explorer
+            </button>
+            <button class="nav-link" data-page="workers">
+                <span>▦</span> Storage workers
+            </button>
+            <button class="nav-link" data-page="reliability">
+                <span>⬡</span> Reliability
+            </button>
+            <button class="nav-link" data-page="copilot">
+                <span>✳</span> Storage copilot
+                <span class="nav-tag">RULES</span>
+            </button>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <div class="connection-card">
+                <div class="connection-top">
+                    <span class="live-dot"></span>
+                    <strong>Controller connection</strong>
+                </div>
+                <small id="sidebarConnection">Connecting...</small>
+                <small class="muted">localhost:8000</small>
+            </div>
+            <div class="user-card">
+                <div class="avatar">H</div>
+                <div>
+                    <strong>Storage Admin</strong>
+                    <small>Administrator</small>
+                </div>
+                <span class="user-menu">•••</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <div class="breadcrumbs">
+                <span>Infrastructure</span>
+                <span class="crumb-separator">/</span>
+                <strong id="breadcrumbPage">Overview</strong>
+            </div>
+
+            <div class="top-actions">
+                <div class="system-status" id="systemStatus">
+                    <span class="live-dot"></span>
+                    Checking system
+                </div>
+                <button class="icon-button" id="refreshButton" title="Refresh data">↻</button>
+                <button class="mobile-menu" id="mobileMenu">☰</button>
+            </div>
+        </header>
+
+        <div class="page-container">
+
+            <!-- OVERVIEW -->
+            <section class="page active" id="page-overview">
+                <div class="page-heading">
+                    <div>
+                        <div class="eyebrow">CONTROL PLANE / OVERVIEW</div>
+                        <h1>Storage overview</h1>
+                        <p class="subtitle">A live view of your distributed object storage infrastructure.</p>
+                    </div>
+                    <button class="primary-button" data-action="upload">
+                        <span>＋</span> Upload object
+                    </button>
+                </div>
+
+                <div class="metric-grid">
+                    <article class="metric-card">
+                        <div class="metric-top"><span>Total objects</span><span class="metric-icon blue">▤</span></div>
+                        <div class="metric-value" id="metricObjects">—</div>
+                        <div class="metric-foot">Stored object records</div>
+                    </article>
+                    <article class="metric-card">
+                        <div class="metric-top"><span>Logical storage</span><span class="metric-icon purple">◈</span></div>
+                        <div class="metric-value" id="metricLogical">—</div>
+                        <div class="metric-foot">Original data size</div>
+                    </article>
+                    <article class="metric-card">
+                        <div class="metric-top"><span>Physical estimate</span><span class="metric-icon cyan">▦</span></div>
+                        <div class="metric-value" id="metricPhysical">—</div>
+                        <div class="metric-foot">Based on replication factor 2</div>
+                    </article>
+                    <article class="metric-card">
+                        <div class="metric-top"><span>Healthy workers</span><span class="metric-icon green">⌘</span></div>
+                        <div class="metric-value" id="metricWorkers">—</div>
+                        <div class="metric-foot" id="workerMetricFoot">Worker availability</div>
+                    </article>
+                </div>
+
+                <div class="overview-grid">
+                    <article class="panel">
+                        <div class="panel-heading">
+                            <div>
+                                <h2>Worker distribution</h2>
+                                <p>Chunk placement from metadata and live inventories</p>
+                            </div>
+                            <span class="subtle-tag">LIVE DATA</span>
+                        </div>
+                        <div id="overviewWorkers" class="worker-distribution">
+                            <div class="empty-state">Loading worker information...</div>
+                        </div>
+                    </article>
+
+                    <article class="panel">
+                        <div class="panel-heading">
+                            <div>
+                                <h2>Storage integrity</h2>
+                                <p>Metadata placement assessment</p>
+                            </div>
+                        </div>
+                        <div class="integrity-score" id="integrityScore">—</div>
+                        <div class="integrity-label">Chunks with two recorded locations</div>
+                        <div class="progress-track"><div class="progress-fill" id="integrityBar"></div></div>
+                        <div class="integrity-note" id="integrityNote">Waiting for storage data...</div>
+                        <button class="text-button" data-page="reliability">Inspect reliability →</button>
+                    </article>
+                </div>
+
+                <article class="panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Recently stored objects</h2>
+                            <p>Latest objects registered by the Controller</p>
+                        </div>
+                        <button class="text-button" data-page="objects">View all objects →</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr><th>OBJECT</th><th>SIZE</th><th>CREATED</th><th>OBJECT ID</th><th></th></tr>
+                            </thead>
+                            <tbody id="recentObjects">
+                                <tr><td colspan="5" class="empty-state">Loading objects...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+            </section>
+
+            <!-- OBJECT EXPLORER -->
+            <section class="page" id="page-objects">
+                <div class="page-heading">
+                    <div>
+                        <div class="eyebrow">STORAGE / OBJECTS</div>
+                        <h1>Object explorer</h1>
+                        <p class="subtitle">Manage stored objects, metadata and file operations.</p>
+                    </div>
+                    <button class="primary-button" data-action="upload">＋ Upload object</button>
+                </div>
+
+                <div class="toolbar">
+                    <div class="search-box">
+                        <span>⌕</span>
+                        <input type="search" id="objectSearch" placeholder="Search by filename or object ID">
+                    </div>
+                    <button class="secondary-button" id="reloadObjects">↻ Refresh</button>
+                </div>
+
+                <article class="panel">
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr><th>OBJECT</th><th>SIZE</th><th>TYPE</th><th>CREATED</th><th>METADATA</th><th>ACTIONS</th></tr>
+                            </thead>
+                            <tbody id="objectsTable">
+                                <tr><td colspan="6" class="empty-state">Loading objects...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-footer" id="objectCount">—</div>
+                </article>
+            </section>
+
+            <!-- WORKERS -->
+            <section class="page" id="page-workers">
+                <div class="page-heading">
+                    <div>
+                        <div class="eyebrow">INFRASTRUCTURE / NODES</div>
+                        <h1>Storage workers</h1>
+                        <p class="subtitle">Worker registration, heartbeat status and chunk inventory.</p>
+                    </div>
+                    <button class="secondary-button" id="reloadWorkers">↻ Refresh workers</button>
+                </div>
+
+                <div class="metric-grid compact-metrics">
+                    <article class="metric-card"><div class="metric-top"><span>Registered nodes</span></div><div class="metric-value" id="workerTotal">—</div></article>
+                    <article class="metric-card"><div class="metric-top"><span>Healthy nodes</span></div><div class="metric-value" id="workerHealthy">—</div></article>
+                    <article class="metric-card"><div class="metric-top"><span>Unavailable nodes</span></div><div class="metric-value" id="workerUnavailable">—</div></article>
+                    <article class="metric-card"><div class="metric-top"><span>Recorded chunks</span></div><div class="metric-value" id="workerChunks">—</div></article>
+                </div>
+
+                <div class="worker-grid" id="workerCards">
+                    <div class="empty-state">Loading workers...</div>
+                </div>
+                <div class="notice">Worker health is based on the Controller's 30-second heartbeat window. Inventory values are queried from each reachable Worker.</div>
+            </section>
+
+            <!-- RELIABILITY -->
+            <section class="page" id="page-reliability">
+                <div class="page-heading">
+                    <div>
+                        <div class="eyebrow">RESILIENCE / DATA PROTECTION</div>
+                        <h1>Reliability center</h1>
+                        <p class="subtitle">Inspect replica placement, integrity metadata and storage risk.</p>
+                    </div>
+                    <button class="secondary-button" id="reloadReliability">↻ Run assessment</button>
+                </div>
+
+                <div class="metric-grid compact-metrics">
+                    <article class="metric-card"><div class="metric-top"><span>Total chunks</span></div><div class="metric-value" id="reliabilityChunks">—</div></article>
+                    <article class="metric-card"><div class="metric-top"><span>Two locations recorded</span></div><div class="metric-value" id="twoCopies">—</div></article>
+                    <article class="metric-card"><div class="metric-top"><span>Missing location metadata</span></div><div class="metric-value" id="missingCopies">—</div></article>
+                    <article class="metric-card"><div class="metric-top"><span>Inventory mismatches</span></div><div class="metric-value" id="inventoryMismatch">—</div></article>
+                </div>
+
+                <article class="panel">
+                    <div class="panel-heading">
+                        <div><h2>Chunk placement inspector</h2><p>Select an object to inspect its primary and replica locations.</p></div>
+                    </div>
+                    <div class="placement-controls">
+                        <select id="placementObject">
+                            <option value="">Select an object</option>
+                        </select>
+                        <button class="secondary-button" id="inspectPlacement">Inspect placement</button>
+                    </div>
+                    <div id="placementResults" class="placement-results">
+                        <div class="empty-state">Choose an object to inspect chunk placement.</div>
+                    </div>
+                </article>
+
+                <article class="panel">
+                    <div class="panel-heading">
+                        <div><h2>Reliability findings</h2><p>Evidence derived from live metadata and worker inventory.</p></div>
+                    </div>
+                    <div id="reliabilityFindings" class="findings-list">
+                        <div class="empty-state">Loading reliability assessment...</div>
+                    </div>
+                </article>
+            </section>
+
+            <!-- COPILOT -->
+            <section class="page" id="page-copilot">
+                <div class="page-heading">
+                    <div>
+                        <div class="eyebrow">OPERATIONS INTELLIGENCE / RULE ENGINE</div>
+                        <h1>Storage copilot</h1>
+                        <p class="subtitle">Ask operational questions about your actual storage cluster.</p>
+                    </div>
+                    <span class="subtle-tag">NO EXTERNAL AI API</span>
+                </div>
+
+                <div class="copilot-layout">
+                    <article class="panel copilot-main">
+                        <div class="copilot-intro">
+                            <div class="copilot-symbol">✳</div>
+                            <div>
+                                <h2>Infrastructure analyst</h2>
+                                <p>Rule-based diagnostics using live Controller, object and Worker data.</p>
+                            </div>
+                        </div>
+
+                        <div class="suggestion-list">
+                            <button class="suggestion" data-question="Analyze the current health of my storage cluster.">Analyze my cluster health <span>→</span></button>
+                            <button class="suggestion" data-question="Which workers have the most chunks and storage responsibility?">Which workers carry the most data? <span>→</span></button>
+                            <button class="suggestion" data-question="Explain the replication and data protection risks.">Check replication risks <span>→</span></button>
+                            <button class="suggestion" data-question="What happens if worker2 goes down?">What if worker2 goes down? <span>→</span></button>
+                            <button class="suggestion" data-question="Explain how automatic replica repair works in this system.">Explain automatic replica repair <span>→</span></button>
+                        </div>
+
+                        <div class="chat-history" id="chatHistory">
+                            <div class="assistant-message">
+                                <div class="message-avatar">✳</div>
+                                <div class="message-content">
+                                    <strong>Storage analyst</strong>
+                                    <p>I can inspect registered Workers, object metadata, chunk placement and inventory differences. Ask a question or choose a diagnostic above.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form id="copilotForm" class="chat-input-area">
+                            <input id="copilotInput" autocomplete="off" placeholder="Ask about your storage infrastructure...">
+                            <button type="submit" class="primary-button">Analyze ↗</button>
+                        </form>
+                        <div class="copilot-disclaimer">Deterministic rule engine · Uses live system data · Not a generative AI model</div>
+                    </article>
+
+                    <aside class="panel copilot-side">
+                        <h3>Diagnostic capabilities</h3>
+                        <div class="capability"><span class="capability-icon">⌘</span><div><strong>Worker health</strong><small>Heartbeat and availability analysis</small></div></div>
+                        <div class="capability"><span class="capability-icon">▤</span><div><strong>Placement analysis</strong><small>Primary and replica locations</small></div></div>
+                        <div class="capability"><span class="capability-icon">⬡</span><div><strong>Failure scenarios</strong><small>Single-worker outage reasoning</small></div></div>
+                        <div class="capability"><span class="capability-icon">✓</span><div><strong>Integrity evidence</strong><small>Recorded checksum and inventory checks</small></div></div>
+                        <div class="copilot-data" id="copilotDataStatus">Waiting for live cluster data...</div>
+                    </aside>
+                </div>
+            </section>
+
+        </div>
+    </main>
+</div>
+
+<!-- UPLOAD MODAL -->
+<div class="modal-backdrop" id="uploadModal">
+    <div class="modal">
+        <div class="modal-heading">
+            <div><div class="eyebrow">OBJECT OPERATIONS</div><h2>Upload an object</h2></div>
+            <button class="close-button" data-close="uploadModal">×</button>
+        </div>
+        <form id="uploadForm">
+            <label class="drop-zone" id="dropZone">
+                <input type="file" id="fileInput" required hidden>
+                <div class="upload-symbol">↑</div>
+                <strong>Drop your file here or browse</strong>
+                <small id="fileLabel">Files are chunked into 1 MB blocks and replicated twice.</small>
+            </label>
+            <label class="field-label" for="uploadMetadata">Optional metadata (JSON)</label>
+            <textarea id="uploadMetadata" rows="4" placeholder='{"owner":"Haneesh","project":"Cloud Storage"}'>{}</textarea>
+            <div class="modal-actions">
+                <button type="button" class="secondary-button" data-close="uploadModal">Cancel</button>
+                <button type="submit" class="primary-button" id="uploadSubmit">Upload object</button>
+            </div>
+        </form>
+        <div id="uploadResult" class="upload-result"></div>
+    </div>
+</div>
+
+<!-- OBJECT DETAILS MODAL -->
+<div class="modal-backdrop" id="detailsModal">
+    <div class="modal modal-wide">
+        <div class="modal-heading">
+            <div><div class="eyebrow">OBJECT INSPECTOR</div><h2 id="detailsTitle">Object details</h2></div>
+            <button class="close-button" data-close="detailsModal">×</button>
+        </div>
+        <div id="detailsBody"></div>
+    </div>
+</div>
+
+<div id="toastContainer" class="toast-container"></div>
+
+</body>
+</html>
