@@ -1,104 +1,93 @@
-# Mini Cloud Object Store
+# Nimbus – Mini Cloud Object Store
 
-A distributed cloud object storage system built using **Python, FastAPI, Docker, and SQLite**. The system stores files as smaller chunks, distributes them across multiple storage workers, maintains replicas for fault tolerance, and automatically repairs missing replicas when a worker fails.
+A distributed cloud object storage system built using **Python, FastAPI, Docker and SQLite**. The system supports file chunking, distributed storage, data replication, integrity verification, worker health monitoring and automatic replica repair.
 
-## Overview
+It also includes an interactive web-based management dashboard for monitoring storage objects, worker nodes, replication status and system reliability.
 
-Mini Cloud Object Store is a simplified implementation of a distributed object storage system inspired by cloud storage services.
+## Features
 
-Instead of storing an entire file on a single machine, the system divides files into smaller chunks and distributes them across multiple worker nodes. Each chunk is replicated across two different workers to improve data availability and fault tolerance.
+### 1. Distributed Object Storage
+- Upload and store files across multiple storage workers.
+- Split uploaded files into chunks of 1 MB.
+- Distribute chunks across available worker nodes.
+- Reconstruct the original file during download.
 
-A central Controller manages file operations, worker coordination, metadata, and replica management.
+### 2. Data Replication
+- Replication factor of 2.
+- Each chunk is stored on a primary worker and a separate replica worker.
+- Helps maintain data availability during worker failures.
+- Supports replica repair when a copy becomes unavailable.
 
-## Key Features
+### 3. Data Integrity
+- SHA-256 checksums for individual chunks.
+- SHA-256 checksum verification for complete objects.
+- Integrity verification during file retrieval.
+- Replica fallback when the primary copy is unavailable.
 
-- **Distributed Storage:** Files are divided into 1 MB chunks and distributed across multiple storage workers.
-- **Data Replication:** Each chunk is stored with a replication factor of 2.
-- **Fault Tolerance:** The system can retrieve data from a replica when the primary worker becomes unavailable.
-- **Automatic Replica Repair:** Missing or invalid replicas are detected and recreated on healthy workers.
-- **Metadata Management:** Stores object information and supports metadata retrieval and updates.
-- **Persistent Metadata:** SQLite maintains object and chunk metadata across Controller restarts.
-- **Data Integrity:** SHA-256 checksums are used to verify chunk and reconstructed file integrity.
-- **REST API:** FastAPI provides endpoints for uploading, downloading, listing, updating metadata, and deleting objects.
-- **Containerized Deployment:** Docker Compose runs the Controller and four storage workers.
+### 4. Worker Health Monitoring
+- Periodic worker heartbeats.
+- Automatic detection of unavailable workers.
+- Worker registration and health status tracking.
+- Background replica repair mechanism.
 
-## Architecture
+### 5. Metadata Management
+- SQLite-based metadata persistence.
+- Object listing and metadata retrieval.
+- Custom metadata support.
+- Metadata updates through API endpoints.
 
-The system consists of five Docker containers:
+### 6. Nimbus Web Dashboard
+An interactive management interface built using HTML, CSS and JavaScript.
 
-1. **Controller:** Coordinates uploads, downloads, worker registration, metadata management, and replica repair.
-2. **Worker 1:** Stores distributed file chunks.
-3. **Worker 2:** Stores distributed file chunks.
-4. **Worker 3:** Stores distributed file chunks.
-5. **Worker 4:** Stores distributed file chunks.
+Dashboard features include:
+- Storage overview and statistics.
+- Object Explorer for uploading, downloading and managing files.
+- Storage Worker monitoring.
+- Reliability centre and chunk placement inspection.
+- Replication statistics and inventory monitoring.
+- Rule-based Storage Copilot for answering questions about the storage system.
 
-SQLite is used by the Controller to persist object and chunk metadata.
+## System Architecture
 
-### Architecture Diagram
+The project follows a controller-worker architecture.
 
-```mermaid
-flowchart TB
-    Client[Client / REST API]
-    Controller[Controller - FastAPI]
-    DB[(SQLite Metadata Database)]
+```text
+                  Client / Web Dashboard
+                           |
+                           v
+                  Controller (FastAPI)
+                           |
+              +------------+------------+
+              |            |            |
+              v            v            v
+          Worker 1     Worker 2     Worker 3
+              |            |            |
+              +------------+------------+
+                           |
+                       Worker 4
 
-    W1[Worker 1]
-    W2[Worker 2]
-    W3[Worker 3]
-    W4[Worker 4]
-
-    Client --> Controller
-    Controller <--> DB
-
-    Controller <--> W1
-    Controller <--> W2
-    Controller <--> W3
-    Controller <--> W4
-
-    W1 <--> W2
-    W2 <--> W3
-    W3 <--> W4
+                  SQLite Metadata Store
 ```
 
-### File Upload Workflow
+### Components
 
-1. The client uploads a file to the Controller.
-2. The Controller divides the file into 1 MB chunks.
-3. Each chunk is assigned a unique identifier.
-4. Chunks are distributed across available workers.
-5. Every chunk is replicated on a second worker.
-6. Object and chunk location metadata is stored in SQLite.
-7. The Controller returns the object identifier.
-
-### File Download Workflow
-
-1. The client requests an object using its object ID.
-2. The Controller retrieves the chunk locations from SQLite.
-3. It fetches each chunk from its primary worker.
-4. If the primary copy is unavailable or invalid, it attempts to retrieve the replica.
-5. The chunks are reconstructed into the original file.
-6. SHA-256 verification ensures data integrity.
-
-### Fault Tolerance and Replica Repair
-
-The Controller monitors worker availability through periodic heartbeats.
-
-When a worker becomes unavailable, the system can retrieve affected chunks from their replicas. A background repair process checks stored chunk copies and recreates missing replicas on healthy workers.
-
-This helps maintain the configured replication factor and improves storage reliability.
+| Component | Responsibility |
+|---|---|
+| Controller | Handles API requests, chunking, placement, metadata and replication |
+| Storage Workers | Store and retrieve file chunks |
+| SQLite | Persists object and chunk metadata |
+| Docker Compose | Manages the controller and worker containers |
+| Web Dashboard | Provides visual monitoring and object management |
 
 ## Technology Stack
 
-| Technology | Purpose |
-|---|---|
-| Python | Backend development |
-| FastAPI | REST API framework |
-| SQLite | Persistent metadata storage |
-| Docker | Containerization |
-| Docker Compose | Multi-container orchestration |
-| HTTPX | Communication between Controller and Workers |
-| Uvicorn | ASGI server |
-| SHA-256 | Data integrity verification |
+- **Backend:** Python, FastAPI
+- **Frontend:** HTML, CSS, JavaScript
+- **Database:** SQLite
+- **Containerization:** Docker, Docker Compose
+- **Communication:** HTTP and REST APIs
+- **Integrity:** SHA-256
+- **Version Control:** Git and GitHub
 
 ## Project Structure
 
@@ -106,15 +95,17 @@ This helps maintain the configured replication factor and improves storage relia
 mini-cloud-object-store/
 │
 ├── controller/
-│   ├── Dockerfile
-│   ├── __init__.py
-│   └── main.py
+│   ├── main.py
+│   └── Dockerfile
 │
 ├── workers/
-│   ├── Dockerfile
 │   └── app/
-│       ├── __init__.py
 │       └── main.py
+│
+├── frontend/
+│   ├── index.html
+│   ├── styles.css
+│   └── app.js
 │
 ├── tests/
 │   └── test_api.py
@@ -122,36 +113,34 @@ mini-cloud-object-store/
 ├── docs/
 │   └── architecture.md
 │
+├── database/
+├── data/
+│
 ├── docker-compose.yml
 ├── requirements.txt
-├── .dockerignore
-└── .gitignore
+└── README.md
 ```
 
 ## Getting Started
 
 ### Prerequisites
 
-Make sure the following tools are installed:
+Install the following:
 
-- Python 3.12 or later
+- Python 3.12+
 - Docker Desktop
 - Docker Compose
 - Git
 
-### 1. Clone the Repository
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/haneeshreddy9/mini-cloud-object-store.git
-```
 
-Navigate into the project directory:
-
-```bash
 cd mini-cloud-object-store
 ```
 
-### 2. Start the Distributed Storage System
+### 2. Start the application
 
 Build and start all containers:
 
@@ -159,39 +148,31 @@ Build and start all containers:
 docker compose up -d --build
 ```
 
-This starts the Controller and four storage workers.
+The application starts:
+- One Controller container.
+- Four Storage Worker containers.
 
-### 3. Verify the Containers
+### 3. Verify the containers
 
 ```bash
 docker compose ps
 ```
 
-Check the Controller health endpoint:
+### 4. Access the application
 
-```bash
-curl http://localhost:8000/health
-```
-
-The Controller API is available at:
-
-```text
-http://localhost:8000
-```
-
-Interactive API documentation is available at:
-
-```text
-http://localhost:8000/docs
-```
+| Service | URL |
+|---|---|
+| Web Dashboard | http://localhost:8000/console |
+| Controller Health | http://localhost:8000/health |
+| API Documentation | http://localhost:8000/docs |
+| Worker Information | http://localhost:8000/internal/workers |
+| Dashboard API | http://localhost:8000/api/v1/dashboard |
 
 ## API Endpoints
 
-The system exposes REST APIs for object and metadata management.
-
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/health` | Check Controller health |
+| GET | `/health` | Controller health check |
 | GET | `/internal/workers` | List registered workers |
 | POST | `/api/v1/objects` | Upload an object |
 | GET | `/api/v1/objects` | List stored objects |
@@ -199,136 +180,81 @@ The system exposes REST APIs for object and metadata management.
 | DELETE | `/api/v1/objects/{object_id}` | Delete an object |
 | GET | `/api/v1/objects/{object_id}/metadata` | Retrieve object metadata |
 | PATCH | `/api/v1/objects/{object_id}/metadata` | Update object metadata |
+| GET | `/api/v1/objects/{object_id}/placement` | Inspect chunk placement |
+| GET | `/api/v1/dashboard` | Retrieve dashboard statistics |
 
-### Example: Upload an Object
+Interactive API documentation is available at:
 
-```bash
-curl -X POST http://localhost:8000/api/v1/objects \
-  -F "file=@sample.txt" \
-  -F 'metadata={"owner":"Haneesh","project":"Cloud Storage"}'
-```
-
-The response provides an object ID that can be used for subsequent operations.
-
-### Example: List Objects
-
-```bash
-curl http://localhost:8000/api/v1/objects
-```
-
-### Example: Download an Object
-
-Replace `OBJECT_ID` with the ID returned during upload.
-
-```bash
-curl -o downloaded.txt \
-  http://localhost:8000/api/v1/objects/OBJECT_ID
-```
-
-### Example: Retrieve Metadata
-
-```bash
-curl http://localhost:8000/api/v1/objects/OBJECT_ID/metadata
-```
-
-### Example: Update Metadata
-
-```bash
-curl -X PATCH \
-  http://localhost:8000/api/v1/objects/OBJECT_ID/metadata \
-  -H "Content-Type: application/json" \
-  -d '{"department":"Computer Science"}'
-```
-
-### Example: Delete an Object
-
-```bash
-curl -X DELETE \
-  http://localhost:8000/api/v1/objects/OBJECT_ID
-```
+http://localhost:8000/docs
 
 ## Testing
 
-The project includes automated API tests using Python's `unittest` framework and HTTPX.
-
-Run the test suite:
+Run the project tests using:
 
 ```bash
-python3 -m unittest discover -s tests -v
+pytest -v
 ```
 
-The tests cover the object lifecycle, including:
+### Manual Testing
 
-- Object upload
-- Object listing
-- Metadata updates and retrieval
-- Object download
-- Data integrity verification
-- Object deletion
+The following scenarios can also be tested:
 
-Additional manual tests were performed to validate:
+1. Upload a file and verify that it is divided into chunks.
+2. Inspect primary and replica placement.
+3. Download the file and verify its SHA-256 checksum.
+4. Update and retrieve custom metadata.
+5. Stop a storage worker and observe heartbeat-based failure detection.
+6. Verify that objects remain downloadable when a worker is unavailable.
+7. Observe replica repair and worker recovery.
 
-- Multi-chunk file uploads and downloads
-- Replication across different workers
-- Metadata persistence after Controller restart
-- Failover when a storage worker becomes unavailable
-- Automatic replica repair
-- Successful retrieval after replica repair
-
-## Data Persistence
-
-The project uses Docker volume mounts to persist data:
-
-- SQLite database files are stored in the `database/` directory.
-- Worker chunk data is stored under `data/worker1/`, `data/worker2/`, `data/worker3/`, and `data/worker4/`.
-
-These directories are generated during execution and are excluded from Git.
-
-## Stopping the System
-
-To stop all containers:
+To simulate a worker failure:
 
 ```bash
-docker compose down
+docker compose stop worker1
 ```
 
-To stop containers and remove their associated named volumes:
+To restart the worker:
 
 ```bash
-docker compose down -v
+docker compose start worker1
 ```
 
-Note: The second command can remove persistent Docker-managed volumes. The project's bind-mounted database and worker data directories should be managed separately.
+Allow time for heartbeat detection and background repair before checking the updated placement.
 
-## Learning Outcomes
+## Storage Copilot
 
-This project demonstrates practical implementation of important distributed systems and cloud computing concepts:
+The dashboard includes a rule-based Storage Copilot.
 
-- Distributed storage architecture
-- Data partitioning and chunk distribution
-- Data replication
-- Fault tolerance and failover
-- Heartbeat-based worker monitoring
-- Automatic recovery and replica repair
-- Metadata persistence
-- RESTful API development
-- Containerization and orchestration
+It uses predefined rules and current system metrics to answer questions about:
+
+- Worker health.
+- Chunk distribution.
+- Replication.
+- Worker failures.
+- Data integrity.
+- Storage availability.
+
+The assistant does not use a paid generative AI API.
 
 ## Future Improvements
 
-- Dynamic worker scaling
-- Consistent hashing for improved chunk placement
-- Authentication and access control
-- Cloud deployment on AWS, Azure, or Google Cloud
-- Advanced monitoring and performance metrics
-- Distributed metadata management
+- User authentication and role-based access control.
+- Cloud deployment with persistent remote storage.
+- Improved replica placement and load balancing.
+- Advanced storage analytics and monitoring.
+- More comprehensive automated failure-recovery testing.
+- Scalable metadata management.
 
-## Author
+## Contributors
 
-**Haneesh Reddy**
+**Haneesh Reddy B**  
+**Vivek Sai Marisetti**
 
-**Vivek**
+## Course Information
 
-GitHub: [@haneeshreddy9](https://github.com/haneeshreddy9)
+**Course:** CSE 838 – Cloud Computing  
+**Institution:** International Institute of Information Technology Bangalore (IIIT Bangalore)
 
-Project Repository: [Mini Cloud Object Store](https://github.com/haneeshreddy9/mini-cloud-object-store)
+---
+
+*Nimbus – Mini Cloud Object Store: A practical implementation of distributed storage, replication, fault tolerance and cloud infrastructure management.*
