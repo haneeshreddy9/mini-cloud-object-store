@@ -44,7 +44,7 @@ class ObjectStoreAPITests(unittest.TestCase):
             }
         )
 
-        self.assertEqual(upload_response.status_code, 200)
+        self.assertEqual(upload_response.status_code, 201)
 
         upload_result = upload_response.json()
 
@@ -81,7 +81,7 @@ class ObjectStoreAPITests(unittest.TestCase):
         self.assertIn(object_id, listed_ids)
 
         # 4. Update custom metadata
-        metadata_response = self.client.put(
+        metadata_response = self.client.patch(
             f"/api/v1/objects/{object_id}/metadata",
             json={
                 "metadata": {
@@ -132,7 +132,7 @@ class ObjectStoreAPITests(unittest.TestCase):
             f"/api/v1/objects/{object_id}"
         )
 
-        self.assertEqual(delete_response.status_code, 200)
+        self.assertEqual(delete_response.status_code, 204)
 
         # 8. Verify object no longer exists
         missing_response = self.client.get(

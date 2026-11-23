@@ -12,7 +12,7 @@ from typing import Dict
 
 import httpx
 
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, Form, HTTPException, UploadFile, File
 from fastapi.responses import Response
 from pydantic import BaseModel
 
@@ -479,8 +479,11 @@ def list_workers():
 # ---------------- OBJECT UPLOAD ----------------
 
 
-@app.post("/api/v1/objects")
-async def upload_object(file: UploadFile = File(...)):
+@app.post("/api/v1/objects", status_code=201)
+async def upload_object(
+    file: UploadFile = File(...),
+    metadata: str = Form(None)
+):
 
     file_data = await file.read()
 
@@ -610,6 +613,22 @@ async def upload_object(file: UploadFile = File(...)):
 
     now = datetime.now(timezone.utc).isoformat()
 
+    # Parse optional metadata supplied at upload time
+    initial_metadata = {}
+    if metadata:
+        try:
+            initial_metadata = json.loads(metadata)
+            if not isinstance(initial_metadata, dict):
+                raise HTTPException(
+                    status_code=400,
+                    detail="metadata must be a JSON object"
+                )
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=400,
+                detail="metadata must be valid JSON"
+            )
+
     try:
 
         with database_connection() as conn:
@@ -636,7 +655,7 @@ async def upload_object(file: UploadFile = File(...)):
                     hashlib.sha256(file_data).hexdigest(),
                     now,
                     now,
-                    "{}"
+                    json.dumps(initial_metadata)
                 )
             )
 
@@ -814,7 +833,7 @@ async def download_object(object_id: str):
     )
 
 
-@app.delete("/api/v1/objects/{object_id}")
+@app.delete("/api/v1/objects/{object_id}", status_code=204)
 async def delete_object(object_id: str):
 
     # Find the object and its chunk metadata.
@@ -891,12 +910,7 @@ async def delete_object(object_id: str):
             (object_id,)
         )
 
-    return {
-        "message": "Object and all replicas deleted successfully",
-        "object_id": object_id,
-        "deleted_chunks": len(obj["chunks"]),
-        "replication_factor": 2
-    }
+    return Response(status_code=204)
 
 # ---------------- REPLICA REPAIR SCHEDULER ----------------
 
@@ -1033,7 +1047,7 @@ def get_object_metadata(object_id: str):
     }
 
 
-@app.put("/api/v1/objects/{object_id}/metadata")
+@app.patch("/api/v1/objects/{object_id}/metadata")
 def update_object_metadata(
     object_id: str,
     data: MetadataUpdate
